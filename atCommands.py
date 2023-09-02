@@ -2,10 +2,11 @@ import serial
 import threading 
 import logging
 import time
+import argparse
 
 # Settings for serial port
-SERIAL_PORT = "COM5"
-SERIAL_BAUDRATE = 9600 
+SERIAL_PORT = "COM9"
+SERIAL_BAUDRATE = 38400 
 
 def openSerialPort(portName, baudrate): 
     try :
@@ -14,16 +15,31 @@ def openSerialPort(portName, baudrate):
                                     parity=serial.PARITY_NONE
                                     )
     except:
-        print("Device {} not found" .format(portName))
+        print("Device {} could not be opened" .format(portName))
         exit()
+    print("Device: {} opened" .format(portName))
     return serialDevice
 
-def threadRead(serialDevice):
-    while(1):
-        readString = serialDevice.read()
-        logging.info("Read string: %s\n", readString)
-        logging.info("Read thread\n")
-        time.sleep(1)
+def parserInit():
+    parser = argparse.ArgumentParser(prog='AT cmds tool',
+                                     description='Send AT commands to ESP8266 deice'
+                                     )
+    parser.add_argument('cmd', type=str, help='Command to be sent')
+    return parser
+
+
+def processCmd(cmd):
+    logging.info("Command: %s\n", cmd)
+
+    # Write AT command
+    if (cmd == "test"):
+        serialDevice.write(b'AT\r\n')
+
+    # Read response 
+    lineRead = serialDevice.readline()
+    if lineRead:
+        line = lineRead.decode()
+        print(line)
 
 if __name__ == "__main__":
     # Initialize logging settings 
@@ -31,13 +47,12 @@ if __name__ == "__main__":
     logging.basicConfig(format=format, level=logging.INFO,
                         datefmt="%H:%M:%S")
     serialDevice = openSerialPort(SERIAL_PORT, SERIAL_BAUDRATE)
-    # Initialize read thread for reading responses
-    retReadThread = threading.Thread(target=threadRead, daemon=True, args=(serialDevice))
-    retReadThread.start()
+    # Initialize command line parser
+    parser = parserInit()
 
-    #Main thread to write AT commands
-    while(1): 
-        logging.info("Main thread\n")
-        serialDevice.write(b'AT\r')
-        time.sleep(1)
-        
+    while(1):
+        args = parser.parse_args()
+        processCmd(args.cmd)
+        serialDevice.close()
+        logging.info("Program finished\n")
+        exit()
