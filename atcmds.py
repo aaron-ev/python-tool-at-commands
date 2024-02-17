@@ -7,26 +7,26 @@ DEFAULT_CMD = "test"
 DEFAULT_TIMEOUT = 1
 baudratesSupported = {
                         4800,
-                        9600, 
-                        19200, 
-                        38400, 
-                        57600, 
-                        115200, 
-                        230400, 
-                        460800, 
-                        921600, 
+                        9600,
+                        19200,
+                        38400,
+                        57600,
+                        115200,
+                        230400,
+                        460800,
+                        921600,
                         1382400,
                         }
 
-def openSerialPort(portName, baudrate): 
+def openSerialPort(portName, baudrate):
     try :
         serialDevice = serial.Serial(port=portName,
                                      baudrate=baudrate,
                                      parity=serial.PARITY_NONE,
                                      timeout=DEFAULT_TIMEOUT
                                      )
-    except:
-        print("Device {} could not be opened" .format(portName))
+    except Exception as error:
+        print("Device {} could not be opened, error {}" .format(portName, error))
         exit()
     print("Device: {} opened, baudrate: {}" .format(portName, baudrate))
     return serialDevice
@@ -46,6 +46,10 @@ def sendCmd(cmd):
     cmd = cmd + '\r\n'
     serialDevice.write(cmd.encode('utf-8'))
 
+
+##
+#   @brief: Process user arguments
+#
 def processArgs(args):
     # print(args)
     cmd = args.cmd[0]
@@ -55,7 +59,10 @@ def processArgs(args):
     if cmd == "test":
         sendCmd("AT")
     elif cmd == "name":
-        sendCmd("AT+NAME")
+        if not(args.write):
+            sendCmd("AT+NAME")
+        else:
+            sendCmd("AT+NAME=" + str(args.write[0]))
     elif cmd == "uart":
         if not(args.write):
             sendCmd("AT+UART")
@@ -75,11 +82,15 @@ def processArgs(args):
             sendCmd("AT+PSWD=" + newPassword)
     elif cmd == "state":
         sendCmd("AT+STATE")
+    elif cmd == "version":
+        sendCmd("AT+VERSION")
+    elif cmd == "address":
+        sendCmd("AT+ADDR")
     elif cmd == "readmode":
         #TODO
         pass
 
-    # Read response 
+    # Read response
     lineRead = serialDevice.readline()
     if lineRead:
         line = lineRead.decode()
@@ -88,7 +99,7 @@ def processArgs(args):
         print("AT device did not response in {}s" . format(DEFAULT_TIMEOUT))
 
 if __name__ == "__main__":
-    # Initial setup 
+    # Initialize parser and serial port.
     parser = parserInit()
     args = parser.parse_args()
     serialDevice = openSerialPort(args.port, args.baudrate)
